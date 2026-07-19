@@ -1946,7 +1946,7 @@ function renderInventoryRows() {
   document.querySelectorAll(".add-to-set").forEach((button) => {
     button.addEventListener("click", () => {
       const item = state.items.find((entry) => entry.id === button.dataset.id);
-      if (item) openItemModal(null, item);
+      if (item) openSelectCountSetModal(item);
     });
   });
 
@@ -2037,7 +2037,47 @@ function openInventorySettingsModal() {
   });
 }
 
-function openItemModal(item = null, prefill = null) {
+function openSelectCountSetModal(inventoryItem) {
+  const sorted = state.countSets.slice().sort((a, b) =>
+    String(b.countDate).localeCompare(String(a.countDate))
+  );
+
+  openModal(`
+    <div class="modal-header">
+      <div>
+        <div class="eyebrow">CHOOSE COUNT SET</div>
+        <h2>Add to Which Set?</h2>
+        <p class="muted">Select a count set to record <strong>${escapeHtml(inventoryItem.name)}</strong> in.</p>
+      </div>
+      <button class="icon-btn" type="button" data-close-modal>×</button>
+    </div>
+    <div class="modal-body">
+      ${sorted.length === 0 ? `<p class="muted">No count sets found. Create one first.</p>` : `
+      <ul class="count-set-picker">
+        ${sorted.map((cs) => `
+          <li>
+            <button class="count-set-pick-btn" data-id="${escapeHtml(cs.id)}" type="button">
+              <span class="cs-pick-name">${escapeHtml(cs.name)}</span>
+              <span class="cs-pick-meta">
+                <span class="count-set-status ${escapeHtml(cs.status)}">${cs.status === "open" ? "Open" : "Closed"}</span>
+                ${escapeHtml(formatDate(cs.countDate))}
+              </span>
+            </button>
+          </li>
+        `).join("")}
+      </ul>`}
+    </div>
+  `, true);
+
+  document.querySelectorAll(".count-set-pick-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeModal();
+      openItemModal(null, inventoryItem, btn.dataset.id);
+    });
+  });
+}
+
+function openItemModal(item = null, prefill = null, targetCountSetId = null) {
   const editing = Boolean(item);
   const current = editing
     ? sanitizeItem(item)
@@ -2094,7 +2134,7 @@ function openItemModal(item = null, prefill = null) {
         <div>
           <div class="eyebrow">${editing ? "OVERALL INVENTORY" : "ACTIVE COUNT SET"}</div>
           <h2>${editing ? "Edit Overall Inventory Item" : "Add Stock to Count Set"}</h2>
-          ${!editing ? `<p class="muted">Recording in: <strong>${escapeHtml(activeCountSet()?.name || "No active count set")}</strong></p>` : ""}
+          ${!editing ? (() => { const cs = targetCountSetId ? state.countSets.find(s => s.id === targetCountSetId) : activeCountSet(); return `<p class="muted">Recording in: <strong>${escapeHtml(cs?.name || "No count set selected")}</strong></p>`; })() : ""}
         </div>
         <button class="icon-btn" type="button" data-close-modal>×</button>
       </div>
@@ -2747,10 +2787,12 @@ function openItemModal(item = null, prefill = null) {
         return;
       }
 
-      const countSet = activeCountSet();
+      const countSet = targetCountSetId
+        ? state.countSets.find((s) => s.id === targetCountSetId)
+        : activeCountSet();
 
       if (!countSet || countSet.status !== "open") {
-        toast("Create or activate an open count set first.", "error");
+        toast("The selected count set is not open.", "error");
         saveButton.disabled = false;
         saveButton.textContent = "Add Item";
         return;
