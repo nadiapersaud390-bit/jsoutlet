@@ -221,7 +221,11 @@ tbody tr:nth-child(odd) td{background:#f6f8fc}
 tbody tr:hover td{background:#edf4ff}
 tbody td.price-cell{background:#fff600!important;font-weight:800}
 .sticky-name{position:sticky;left:0;z-index:5}
-tbody td.sticky-name{z-index:2;min-width:270px;max-width:370px;overflow:hidden;text-overflow:ellipsis;background:white;font-weight:800}
+tbody td.sticky-name{z-index:2;min-width:270px;max-width:370px;background:white;font-weight:800}
+.sticky-name-inner{display:flex;align-items:center;gap:6px;overflow:hidden}
+.sticky-name-inner span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inline-edit-btn{flex-shrink:0;min-height:22px;padding:2px 5px;border:1px solid #cbd5e2;border-radius:5px;background:white;color:var(--navy-800);font-size:11px;cursor:pointer;line-height:1}
+.inline-edit-btn:hover{background:#edf4ff;border-color:#93b8f0}
 tbody tr:nth-child(odd) td.sticky-name{background:#f6f8fc}
 tbody tr:hover td.sticky-name{background:#edf4ff}
 tfoot td{position:sticky;bottom:0;z-index:3;color:white;background:var(--navy-900);font-weight:900}
