@@ -122,6 +122,7 @@ const state = {
   currentSection: "overview",
   search: "",
   category: "",
+  filterNotInSet: false,
   page: 1,
   pageSize: 50,
   subscriptions: [],
@@ -713,6 +714,7 @@ function inventoryFilters() {
       </select>
     </div>
     <div class="toolbar-right">
+      ${activeCountSet() ? `<button id="filterNotInSetBtn" class="btn btn-secondary btn-small${state.filterNotInSet ? " active-filter" : ""}" type="button">Not in Active Set${state.filterNotInSet ? " ✕" : ""}</button>` : ""}
       <select id="pageSize">
         ${[25,50,100,250].map((size) => `<option value="${size}" ${state.pageSize === size ? "selected" : ""}>${size} rows</option>`).join("")}
       </select>
@@ -720,13 +722,22 @@ function inventoryFilters() {
   `;
 }
 
+function activeSetItemIds() {
+  const active = activeCountSet();
+  if (!active) return new Set();
+  return new Set(Object.values(active.items || {}).map((l) => l.itemId).filter(Boolean));
+}
+
 function filteredItems() {
   const search = state.search.trim();
+  const inSetIds = state.filterNotInSet ? activeSetItemIds() : null;
 
   return state.items.filter((item) => {
     const matchesCategory = !state.category || item.category === state.category;
     const searchable = `${item.name} ${item.category} ${item.size} ${item.supplier}`;
-    return matchesCategory && (!search || matchesSearchQuery(searchable, search));
+    const matchesSearch = !search || matchesSearchQuery(searchable, search);
+    const matchesSetFilter = !inSetIds || !inSetIds.has(item.id);
+    return matchesCategory && matchesSearch && matchesSetFilter;
   });
 }
 
@@ -1817,6 +1828,11 @@ function bindInventoryToolbar() {
     state.page = 1;
     renderInventoryRows();
   });
+  $("filterNotInSetBtn")?.addEventListener("click", () => {
+    state.filterNotInSet = !state.filterNotInSet;
+    state.page = 1;
+    renderAlcohol();
+  });
   $("pageSize").addEventListener("change", (event) => {
     state.pageSize = integer(event.target.value) || 50;
     state.page = 1;
@@ -1853,16 +1869,20 @@ function renderInventoryRows() {
   $("inventoryEmpty").classList.toggle("hidden", filtered.length > 0);
   $("inventoryTable").classList.toggle("hidden", filtered.length === 0);
 
+  const inSetIds = activeSetItemIds();
+  const active = activeCountSet();
+
   body.innerHTML = rows.map((item) => {
     const calc = calculate(item);
     const low = item.reorderLevel > 0 && calc.quantity <= item.reorderLevel;
+    const inSet = !active || inSetIds.has(item.id);
 
     return `
-      <tr class="${low ? "low-stock" : ""}">
+      <tr class="${low ? "low-stock" : ""}${!inSet ? " not-in-set" : ""}">
         <td class="sticky-name" title="${escapeHtml(item.name)}">
           <div class="sticky-name-inner">
             ${canWrite ? `<button class="inline-edit-btn edit-item" data-id="${escapeHtml(item.id)}" type="button" title="Edit">✏</button>` : ""}
-            <span>${escapeHtml(item.name)}${low ? ' <span class="low-badge">LOW</span>' : ""}</span>
+            <span>${escapeHtml(item.name)}${low ? ' <span class="low-badge">LOW</span>' : ""}${!inSet ? ' <span class="not-in-set-badge">NOT IN SET</span>' : ""}</span>
           </div>
         </td>
         <td>${escapeHtml(item.category)}</td>
@@ -1884,6 +1904,7 @@ function renderInventoryRows() {
         ${canWrite ? `
           <td>
             <div class="row-actions">
+              ${!inSet && active ? `<button class="row-btn add-to-set" data-id="${escapeHtml(item.id)}" type="button">＋ Add to Set</button>` : ""}
               <button class="row-btn edit-item" data-id="${escapeHtml(item.id)}" type="button">Edit</button>
               <button class="row-btn delete delete-item" data-id="${escapeHtml(item.id)}" type="button">Delete</button>
             </div>
@@ -1920,6 +1941,13 @@ function renderInventoryRows() {
     button.addEventListener("click", () =>
       openItemModal(state.items.find((item) => item.id === button.dataset.id))
     );
+  });
+
+  document.querySelectorAll(".add-to-set").forEach((button) => {
+    button.addEventListener("click", () => {
+      const item = state.items.find((entry) => entry.id === button.dataset.id);
+      if (item) openItemModal(null, item);
+    });
   });
 
   document.querySelectorAll(".delete-item").forEach((button) => {
@@ -2009,29 +2037,29 @@ function openInventorySettingsModal() {
   });
 }
 
-function openItemModal(item = null) {
+function openItemModal(item = null, prefill = null) {
   const editing = Boolean(item);
   const current = editing
     ? sanitizeItem(item)
     : {
         id: "",
-        catalogId: "",
-        name: "",
-        category: "",
-        size: "",
-        brand: "",
+        catalogId: prefill?.catalogId || "",
+        name: prefill?.name || "",
+        category: prefill?.category || "",
+        size: prefill?.size || "",
+        brand: prefill?.brand || "",
         cases: 0,
-        unitsPerCase: 0,
+        unitsPerCase: prefill?.unitsPerCase || 0,
         looseUnits: 0,
-        caseCost: 0,
-        caseMarkup: 0,
-        caseSellingPrice: 0,
-        unitCost: 0,
-        unitMarkup: 0,
-        sellingPrice: 0,
-        supplier: "",
-        reorderLevel: 0,
-        notes: ""
+        caseCost: prefill?.caseCost || 0,
+        caseMarkup: prefill?.caseMarkup || 0,
+        caseSellingPrice: prefill?.caseSellingPrice || 0,
+        unitCost: prefill?.unitCost || 0,
+        unitMarkup: prefill?.unitMarkup || 0,
+        sellingPrice: prefill?.sellingPrice || 0,
+        supplier: prefill?.supplier || "",
+        reorderLevel: prefill?.reorderLevel || 0,
+        notes: prefill?.notes || ""
       };
 
   if (!state.catalog.length) {
