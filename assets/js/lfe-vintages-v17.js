@@ -1860,8 +1860,10 @@ function renderInventoryRows() {
     return `
       <tr class="${low ? "low-stock" : ""}">
         <td class="sticky-name" title="${escapeHtml(item.name)}">
-          ${escapeHtml(item.name)}
-          ${low ? '<span class="low-badge">LOW</span>' : ""}
+          <div class="sticky-name-inner">
+            ${canWrite ? `<button class="inline-edit-btn edit-item" data-id="${escapeHtml(item.id)}" type="button" title="Edit">✏</button>` : ""}
+            <span>${escapeHtml(item.name)}${low ? ' <span class="low-badge">LOW</span>' : ""}</span>
+          </div>
         </td>
         <td>${escapeHtml(item.category)}</td>
         <td>${escapeHtml(item.size)}</td>
