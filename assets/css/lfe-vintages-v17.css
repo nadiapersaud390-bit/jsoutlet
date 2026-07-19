@@ -234,6 +234,15 @@ tfoot td{position:sticky;bottom:0;z-index:3;color:white;background:var(--navy-90
 .row-btn.delete{color:var(--red);border-color:#e4b3b3}
 .low-stock td{box-shadow:inset 0 2px 0 rgba(197,62,62,.34),inset 0 -2px 0 rgba(197,62,62,.34)}
 .low-badge{margin-left:5px;padding:2px 5px;border-radius:4px;color:#9e2626;background:#ffe2e2;font-size:8px;font-weight:900}
+.not-in-set-badge{margin-left:5px;padding:2px 5px;border-radius:4px;color:#7a5c00;background:#fff3cd;font-size:8px;font-weight:900;white-space:nowrap}
+tr.not-in-set td{background:#fffdf4}
+tr.not-in-set td.sticky-name{background:#fffdf4}
+tbody tr.not-in-set:nth-child(odd) td{background:#fffbea}
+tbody tr.not-in-set:nth-child(odd) td.sticky-name{background:#fffbea}
+tbody tr.not-in-set:hover td,tbody tr.not-in-set:hover td.sticky-name{background:#fff8d6}
+.row-btn.add-to-set{color:#7a5c00;border-color:#f0d060;background:#fffbe8}
+.row-btn.add-to-set:hover{background:#fff3cd}
+.active-filter{background:var(--navy-800)!important;color:#fff!important;border-color:var(--navy-800)!important}
 .empty-state{padding:58px 20px;text-align:center}
 .empty-state .icon{font-size:43px;color:#9aaac0}
 .empty-state h3{margin:8px 0 4px}
