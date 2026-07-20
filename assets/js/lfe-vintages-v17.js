@@ -1406,6 +1406,10 @@ function countSetExportRows(countSet) {
 }
 
 function exportCountSet(countSetId) {
+  openExportCountSetModal(countSetId);
+}
+
+function openExportCountSetModal(countSetId) {
   const countSet = state.countSets.find((entry) => entry.id === countSetId);
 
   if (!countSet || !countSet.items.length) {
@@ -1413,22 +1417,89 @@ function exportCountSet(countSetId) {
     return;
   }
 
-  const rows = countSetExportRows(countSet);
-  const headers = Object.keys(rows[0]);
-  const csv = [
-    headers.map(csvEscape).join(","),
-    ...rows.map((row) =>
-      headers.map((header) => csvEscape(row[header])).join(",")
-    )
-  ].join("\r\n");
+  const allColumns = [
+    "No.", "Count Set", "Count Date", "Product Name", "Category", "Size",
+    "Cases Added", "Units Per Case", "Loose Units Added", "Total Units Added",
+    "Case Cost", "Case Selling Price", "Unit Cost", "Unit Selling Price",
+    "Stock Cost", "Sales Value", "Potential Profit", "Supplier", "Notes",
+    "Added By", "Added At"
+  ];
 
-  const safeName = countSet.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "");
+  openModal(`
+    <div class="modal-header">
+      <div>
+        <div class="eyebrow">EXPORT</div>
+        <h2>Choose Columns to Export</h2>
+        <p class="muted">${escapeHtml(countSet.name)} · ${countSet.items.length} item${countSet.items.length === 1 ? "" : "s"}</p>
+      </div>
+      <button class="icon-btn" type="button" data-close-modal>×</button>
+    </div>
+    <div class="modal-body">
+      <div class="export-col-actions">
+        <button id="exportSelectAll" class="btn btn-secondary btn-small" type="button">Select All</button>
+        <button id="exportDeselectAll" class="btn btn-secondary btn-small" type="button">Deselect All</button>
+      </div>
+      <ul class="export-col-list">
+        ${allColumns.map((col) => `
+          <li>
+            <label class="export-col-item">
+              <input type="checkbox" class="export-col-cb" value="${escapeHtml(col)}" checked>
+              <span>${escapeHtml(col)}</span>
+            </label>
+          </li>
+        `).join("")}
+      </ul>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" data-close-modal>Cancel</button>
+      <button id="exportCountSetBtn" class="btn btn-primary" type="button">Export CSV</button>
+      ${window.XLSX ? `<button id="exportCountSetXlsxBtn" class="btn btn-primary" type="button">Export Excel</button>` : ""}
+    </div>
+  `, true);
 
-  downloadBlob(
-    `\uFEFF${csv}`,
-    `Count_Set_${safeName || countSet.id}.csv`,
-    "text/csv;charset=utf-8"
-  );
+  const getSelected = () =>
+    [...document.querySelectorAll(".export-col-cb:checked")].map((cb) => cb.value);
+
+  $("exportSelectAll").addEventListener("click", () => {
+    document.querySelectorAll(".export-col-cb").forEach((cb) => { cb.checked = true; });
+  });
+  $("exportDeselectAll").addEventListener("click", () => {
+    document.querySelectorAll(".export-col-cb").forEach((cb) => { cb.checked = false; });
+  });
+
+  const doExport = (format) => {
+    const selected = getSelected();
+    if (!selected.length) { toast("Select at least one column.", "error"); return; }
+
+    const allRows = countSetExportRows(countSet);
+    const rows = allRows.map((row) => {
+      const filtered = {};
+      selected.forEach((col) => { filtered[col] = row[col] ?? ""; });
+      return filtered;
+    });
+
+    const safeName = countSet.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "");
+
+    if (format === "xlsx" && window.XLSX) {
+      const sheet = XLSX.utils.json_to_sheet(rows);
+      sheet["!cols"] = selected.map((h) => ({ wch: Math.min(36, Math.max(12, h.length + 2)) }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, sheet, "Count Set");
+      XLSX.writeFile(wb, `Count_Set_${safeName || countSet.id}.xlsx`);
+    } else {
+      const csv = [
+        selected.map(csvEscape).join(","),
+        ...rows.map((row) => selected.map((col) => csvEscape(row[col])).join(","))
+      ].join("\r\n");
+      downloadBlob(`\uFEFF${csv}`, `Count_Set_${safeName || countSet.id}.csv`, "text/csv;charset=utf-8");
+    }
+
+    closeModal();
+    addAudit("count_set_exported", `Exported count set "${countSet.name}"`, { countSetId });
+  };
+
+  $("exportCountSetBtn").addEventListener("click", () => doExport("csv"));
+  $("exportCountSetXlsxBtn")?.addEventListener("click", () => doExport("xlsx"));
 }
 
 function openCountSetDetails(countSetId) {
