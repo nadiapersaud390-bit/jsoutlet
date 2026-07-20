@@ -2128,13 +2128,21 @@ function openItemModal(item = null, prefill = null, targetCountSetId = null) {
 
   const currentCalc = calculate(current);
 
+  const targetCountSet = targetCountSetId
+    ? state.countSets.find((s) => s.id === targetCountSetId)
+    : activeCountSet();
+
+  const recordingInLabel = !editing
+    ? `<p class="muted">Recording in: <strong>${escapeHtml(targetCountSet?.name || "No count set selected")}</strong></p>`
+    : "";
+
   openModal(`
     <form id="itemForm">
       <div class="modal-header">
         <div>
           <div class="eyebrow">${editing ? "OVERALL INVENTORY" : "ACTIVE COUNT SET"}</div>
           <h2>${editing ? "Edit Overall Inventory Item" : "Add Stock to Count Set"}</h2>
-          ${!editing ? (() => { const cs = targetCountSetId ? state.countSets.find(s => s.id === targetCountSetId) : activeCountSet(); return `<p class="muted">Recording in: <strong>${escapeHtml(cs?.name || "No count set selected")}</strong></p>`; })() : ""}
+          ${recordingInLabel}
         </div>
         <button class="icon-btn" type="button" data-close-modal>×</button>
       </div>
