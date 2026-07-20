@@ -2047,7 +2047,6 @@ function openSelectCountSetModal(inventoryItem) {
       <div>
         <div class="eyebrow">CHOOSE COUNT SET</div>
         <h2>Add to Which Set?</h2>
-        <p class="muted">Select a count set to record <strong>${escapeHtml(inventoryItem.name)}</strong> in.</p>
       </div>
       <button class="icon-btn" type="button" data-close-modal>×</button>
     </div>
@@ -2056,7 +2055,7 @@ function openSelectCountSetModal(inventoryItem) {
       <ul class="count-set-picker">
         ${sorted.map((cs) => `
           <li>
-            <button class="count-set-pick-btn" data-id="${escapeHtml(cs.id)}" type="button">
+            <button class="count-set-pick-btn${cs.status !== "open" ? " cs-pick-closed" : ""}" data-id="${escapeHtml(cs.id)}" type="button"${cs.status !== "open" ? " disabled" : ""}>
               <span class="cs-pick-name">${escapeHtml(cs.name)}</span>
               <span class="cs-pick-meta">
                 <span class="count-set-status ${escapeHtml(cs.status)}">${cs.status === "open" ? "Open" : "Closed"}</span>
@@ -2067,14 +2066,94 @@ function openSelectCountSetModal(inventoryItem) {
         `).join("")}
       </ul>`}
     </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" data-close-modal>Cancel</button>
+      <button id="confirmAddToSetBtn" class="btn btn-primary" type="button" disabled>Save</button>
+    </div>
   `, true);
+
+  let selectedCountSetId = null;
 
   document.querySelectorAll(".count-set-pick-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      closeModal();
-      openItemModal(null, inventoryItem, btn.dataset.id);
+      document.querySelectorAll(".count-set-pick-btn").forEach((b) => b.classList.remove("cs-pick-selected"));
+      btn.classList.add("cs-pick-selected");
+      selectedCountSetId = btn.dataset.id;
+      $("confirmAddToSetBtn").disabled = false;
     });
   });
+
+  $("confirmAddToSetBtn").addEventListener("click", async () => {
+    const countSet = state.countSets.find((s) => s.id === selectedCountSetId);
+    if (!countSet) return;
+    const saveBtn = $("confirmAddToSetBtn");
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving…";
+    try {
+      await quickSaveItemToCountSet(inventoryItem, countSet);
+      closeModal();
+      toast(`${inventoryItem.name} added to "${countSet.name}".`);
+    } catch (err) {
+      console.error(err);
+      toast("Save failed. Please try again.", "error");
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save";
+    }
+  });
+}
+
+async function quickSaveItemToCountSet(item, countSet) {
+  const calc = calculate(item);
+
+  const lineRef = push(ref(database, `${PATHS.countSets}/${countSet.id}/items`));
+  const lineId = lineRef.key;
+
+  const linePayload = {
+    id: lineId,
+    itemId: item.id,
+    catalogId: item.catalogId || "",
+    name: item.name,
+    category: item.category || "",
+    size: item.size || "",
+    casesAdded: item.cases,
+    unitsPerCase: item.unitsPerCase,
+    looseUnitsAdded: item.looseUnits,
+    totalUnitsAdded: calc.quantity,
+    caseCost: calc.caseCostValue,
+    caseSellingPrice: calc.caseSellingValue,
+    unitCost: calc.costEach,
+    unitSellingPrice: calc.sellingEach,
+    stockCost: calc.stockCost,
+    salesValue: calc.salesValue,
+    potentialProfit: calc.profit,
+    supplier: item.supplier || "",
+    notes: item.notes || "",
+    addedAt: serverTimestamp(),
+    addedBy: state.user.uid,
+    addedByName: state.profile?.displayName || ""
+  };
+
+  const updates = {};
+  updates[`${PATHS.countSets}/${countSet.id}/items/${lineId}`] = linePayload;
+  updates[`${PATHS.countSets}/${countSet.id}/lineCount`]       = (countSet.lineCount || 0) + 1;
+  updates[`${PATHS.countSets}/${countSet.id}/productCount`]    = (countSet.productCount || 0) + 1;
+  updates[`${PATHS.countSets}/${countSet.id}/totalCases`]      = (countSet.totalCases || 0) + item.cases;
+  updates[`${PATHS.countSets}/${countSet.id}/totalUnits`]      = (countSet.totalUnits || 0) + calc.quantity;
+  updates[`${PATHS.countSets}/${countSet.id}/stockCost`]       = (countSet.stockCost || 0) + calc.stockCost;
+  updates[`${PATHS.countSets}/${countSet.id}/salesValue`]      = (countSet.salesValue || 0) + calc.salesValue;
+  updates[`${PATHS.countSets}/${countSet.id}/potentialProfit`] = (countSet.potentialProfit || 0) + calc.profit;
+  updates[`${PATHS.countSets}/${countSet.id}/updatedAt`]       = serverTimestamp();
+  updates[`${PATHS.items}/${item.id}/lastCountSetId`]          = countSet.id;
+  updates[`${PATHS.items}/${item.id}/lastCountSetName`]        = countSet.name;
+  updates[`${PATHS.items}/${item.id}/updatedAt`]               = serverTimestamp();
+
+  await update(ref(database), updates);
+
+  await addAudit(
+    "item_added_to_count_set",
+    `Recorded ${calc.quantity} unit${calc.quantity === 1 ? "" : "s"} of ${item.name} in "${countSet.name}"`,
+    { countSetId: countSet.id, countSetName: countSet.name, itemId: item.id, itemName: item.name, unitsAdded: calc.quantity }
+  );
 }
 
 function openItemModal(item = null, prefill = null, targetCountSetId = null) {
