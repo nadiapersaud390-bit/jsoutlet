@@ -2337,7 +2337,7 @@ function openItemModal(item = null, prefill = null, targetCountSetId = null) {
 
           <section class="quantity-box full-span">
             <h3 class="box-title">Stock Count</h3>
-            <div class="form-grid three">
+            <div class="form-grid four">
               <div class="field">
                 <label for="itemCases">Number of cases</label>
                 <input id="itemCases" type="number" min="0" step="1" value="${editing ? current.cases : ""}">
@@ -2394,6 +2394,10 @@ function openItemModal(item = null, prefill = null, targetCountSetId = null) {
 
                   <div id="looseQuickAddMessage" class="quick-add-message hidden"></div>
                 </div>
+              </div>
+              <div class="total-units-display">
+                <label>Total units</label>
+                <div class="total-units-value" id="formTotalQtyInline">${editing ? formatNumber(currentCalc.quantity) : "—"}</div>
               </div>
             </div>
 
@@ -2702,6 +2706,8 @@ function openItemModal(item = null, prefill = null, targetCountSetId = null) {
     $("formTotalQty").textContent = hasStockQuantity
       ? formatNumber(calc.quantity)
       : "";
+    const inlineTotal = $("formTotalQtyInline");
+    if (inlineTotal) inlineTotal.textContent = hasStockQuantity ? formatNumber(calc.quantity) : "—";
 
     $("formCases").textContent = hasCases
       ? formatNumber(temp.cases)
@@ -2764,6 +2770,22 @@ function openItemModal(item = null, prefill = null, targetCountSetId = null) {
     "itemUnitMarkup",
     "itemSellingPrice"
   ].forEach((id) => $(id).addEventListener("input", preview));
+
+  const autoCalcCases = () => {
+    const unitsPerCase = integer($("itemUnitsPerCase").value);
+    const loose = integer($("itemLooseUnits").value);
+    if (unitsPerCase > 0 && loose >= unitsPerCase) {
+      const extraCases = Math.floor(loose / unitsPerCase);
+      const remaining = loose % unitsPerCase;
+      const existingCases = integer($("itemCases").value);
+      $("itemCases").value = existingCases + extraCases;
+      $("itemLooseUnits").value = remaining;
+      preview();
+    }
+  };
+
+  $("itemLooseUnits").addEventListener("change", autoCalcCases);
+  $("itemUnitsPerCase").addEventListener("change", autoCalcCases);
 
   const looseQuickAddPanel = $("looseQuickAddPanel");
   const looseQuickAddAmount = $("looseQuickAddAmount");
