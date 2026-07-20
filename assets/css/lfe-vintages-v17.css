@@ -718,9 +718,16 @@ tbody tr.not-in-set:hover td,tbody tr.not-in-set:hover td.sticky-name{background
 }
 .count-set-status.open{color:#0c7552;background:#e5f7ef}
 .count-set-status.closed{color:#626a76;background:#eceff3}
+.quick-add-item-summary{padding:12px 16px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;margin-bottom:14px}
+.qa-name{font-weight:700;font-size:15px;color:var(--navy-800);margin-bottom:2px}
+.qa-meta{font-size:12px;color:#64748b;margin-bottom:8px}
+.qa-stats{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:#475569}
+.qa-stats strong{color:var(--navy-800)}
 .count-set-picker{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .count-set-pick-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;text-align:left;transition:border-color .15s,background .15s}
-.count-set-pick-btn:hover{border-color:#c8a84b;background:#fffdf4}
+.count-set-pick-btn:hover:not(:disabled){border-color:#c8a84b;background:#fffdf4}
+.count-set-pick-btn.cs-pick-selected{border-color:#c8a84b;background:#fffbe8;box-shadow:0 0 0 2px #c8a84b40}
+.count-set-pick-btn:disabled{opacity:.5;cursor:not-allowed}
 .cs-pick-name{font-weight:700;font-size:14px;color:var(--navy-800)}
 .cs-pick-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:#64748b;white-space:nowrap}
 .count-set-summary-grid{
@@ -757,6 +764,11 @@ tbody tr.not-in-set:hover td,tbody tr.not-in-set:hover td.sticky-name{background
 }
 .count-set-detail-scroll{max-height:52vh}
 .count-set-detail-table{min-width:1350px}
+.export-col-actions{display:flex;gap:8px;margin-bottom:12px}
+.export-col-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
+.export-col-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;transition:background .12s}
+.export-col-item:hover{background:#f8fafc}
+.export-col-item input[type="checkbox"]{width:15px;height:15px;accent-color:var(--navy-800);cursor:pointer;flex-shrink:0}
 
 @media(max-width:1000px){
   .count-set-summary-grid{grid-template-columns:repeat(3,1fr)}
